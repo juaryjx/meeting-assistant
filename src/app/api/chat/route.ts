@@ -2,7 +2,11 @@ import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-r
 import { NextRequest, NextResponse } from "next/server";
 
 const client = new BedrockRuntimeClient({
-  region: process.env.AWS_REGION || "us-east-1",
+  region: process.env.APP_AWS_REGION || "us-east-1",
+  credentials: process.env.APP_AWS_ACCESS_KEY_ID ? {
+    accessKeyId: process.env.APP_AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.APP_AWS_SECRET_ACCESS_KEY || "",
+  } : undefined,
 });
 
 const SYSTEM_PROMPT = `You are a meeting assistant. You have access to a live transcript of an ongoing conversation/meeting.
