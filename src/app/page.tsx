@@ -22,10 +22,10 @@ export default function Home() {
   useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
 
   const startListening = useCallback(async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
     mediaStreamRef.current = stream;
 
-    const audioCtx = new AudioContext({ sampleRate: 16000 });
+    const audioCtx = new AudioContext();
     audioCtxRef.current = audioCtx;
     const source = audioCtx.createMediaStreamSource(stream);
     const processor = audioCtx.createScriptProcessor(4096, 1, 1);
@@ -34,15 +34,21 @@ export default function Home() {
     const abort = new AbortController();
     abortRef.current = abort;
 
-    // Collect audio chunks and stream to backend
+    const nativeSampleRate = audioCtx.sampleRate;
+    const targetRate = 16000;
+
     const audioChunks: ArrayBuffer[] = [];
     let sending = false;
 
     processor.onaudioprocess = (e) => {
       const float32 = e.inputBuffer.getChannelData(0);
-      const pcm16 = new Int16Array(float32.length);
-      for (let i = 0; i < float32.length; i++) {
-        pcm16[i] = Math.max(-32768, Math.min(32767, Math.floor(float32[i] * 32768)));
+      // Downsample to 16kHz
+      const ratio = nativeSampleRate / targetRate;
+      const newLength = Math.floor(float32.length / ratio);
+      const pcm16 = new Int16Array(newLength);
+      for (let i = 0; i < newLength; i++) {
+        const sample = float32[Math.floor(i * ratio)];
+        pcm16[i] = Math.max(-32768, Math.min(32767, Math.floor(sample * 32768)));
       }
       audioChunks.push(pcm16.buffer);
     };
